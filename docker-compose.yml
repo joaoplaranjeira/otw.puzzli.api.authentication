@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: otw-puzzli-authentication-api
+    ports:
+      - "5010:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - puzzli-network
+
+networks:
+  puzzli-network:
+    driver: bridge

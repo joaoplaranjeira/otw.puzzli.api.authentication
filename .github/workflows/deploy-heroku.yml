@@ -1,0 +1,30 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build, Push and Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          usedocker: true
+          docker_heroku_process_type: web
+          docker_build_args: |
+            NODE_ENV=production
+
+      - name: Verify deployment
+        run: |
+          echo "Application deployed successfully!"
+          echo "URL: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com"
