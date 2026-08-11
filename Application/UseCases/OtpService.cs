@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Application.DTOs;
 using Application.Services;
 using Domain.Entities;
@@ -7,109 +9,170 @@ namespace Application.UseCases;
 
 public class OtpService : IOtpService
 {
+    private const int OtpExpirationMinutes = 10;
+    private const int OtpLength = 6;
+    private const int MaxFailedAttempts = 5;
+    private const int BlockDurationMinutes = 15;
+    private const int RateLimitRequests = 3;
+    private const int RateLimitWindowMinutes = 15;
+
     private readonly IOtpRepository _otpRepository;
     private readonly IEmailService _emailService;
     private readonly ITokenService _tokenService;
-    private const int OtpExpirationMinutes = 10;
-    private const int OtpLength = 6;
+    private readonly IUserRepository _userRepository;
 
-    public OtpService(IOtpRepository otpRepository, IEmailService emailService, ITokenService tokenService)
+    public OtpService(
+        IOtpRepository otpRepository,
+        IEmailService emailService,
+        ITokenService tokenService,
+        IUserRepository userRepository)
     {
         _otpRepository = otpRepository;
         _emailService = emailService;
         _tokenService = tokenService;
+        _userRepository = userRepository;
     }
 
-    public async Task<OtpResponse> SendOtpAsync(string email, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+    public async Task<OtpResponse> SendOtpAsync(
+        string email,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken cancellationToken = default)
     {
-        // Generate OTP code
-        var otpCode = GenerateOtpCode();
-        
+        var normalizedEmail = NormalizeEmail(email);
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            return new OtpResponse
+            {
+                Success = true,
+                Message = "Se o email estiver registado e ativo, receberá um código OTP."
+            };
+        }
+
+        var latestOtp = await _otpRepository.GetLatestByEmailAsync(normalizedEmail, cancellationToken);
+        if (latestOtp?.BlockedUntil > DateTime.UtcNow)
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Demasiadas tentativas. Tente novamente mais tarde."
+            };
+        }
+
+        var recentOtps = await _otpRepository.GetRecentByEmailAsync(
+            normalizedEmail,
+            DateTime.UtcNow.AddMinutes(-RateLimitWindowMinutes),
+            cancellationToken);
+        if (recentOtps.Count >= RateLimitRequests)
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Foram efetuados demasiados pedidos. Aguarde antes de pedir outro código."
+            };
+        }
+
         var otp = new OtpCode
         {
             Id = Guid.NewGuid(),
-            Email = email.ToLowerInvariant(),
-            Code = otpCode,
+            Email = normalizedEmail,
+            Code = GenerateOtpCode(),
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(OtpExpirationMinutes),
             IsUsed = false,
             IpAddress = ipAddress,
             UserAgent = userAgent
         };
-
         await _otpRepository.CreateAsync(otp, cancellationToken);
-        
-        // Send email via Loops
-        var emailSent = await _emailService.SendOtpEmailAsync(email, otpCode, cancellationToken);
 
-        if (!emailSent)
+        if (!await _emailService.SendOtpEmailAsync(normalizedEmail, otp.Code, cancellationToken))
         {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Failed to send OTP email"
-            };
+            otp.IsUsed = true;
+            otp.UsedAt = DateTime.UtcNow;
+            await _otpRepository.UpdateAsync(otp, cancellationToken);
+            return new OtpResponse { Success = false, Message = "Não foi possível enviar o email OTP." };
         }
 
         return new OtpResponse
         {
             Success = true,
-            Message = "OTP sent successfully",
+            Message = "OTP enviado com sucesso.",
             ExpiresAt = otp.ExpiresAt
         };
     }
 
-    public async Task<OtpResponse> ValidateOtpAsync(string email, string code, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+    public async Task<OtpResponse> ValidateOtpAsync(
+        string email,
+        string code,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken cancellationToken = default)
     {
-        var otp = await _otpRepository.GetByEmailAndCodeAsync(email.ToLowerInvariant(), code, cancellationToken);
-
-        if (otp == null)
+        var normalizedEmail = NormalizeEmail(email);
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user is null || !user.IsActive)
         {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Invalid OTP code"
-            };
+            return InvalidOtpResponse();
+        }
+
+        var otp = await _otpRepository.GetLatestByEmailAsync(normalizedEmail, cancellationToken);
+        if (otp is null)
+        {
+            return InvalidOtpResponse();
+        }
+
+        if (otp.BlockedUntil > DateTime.UtcNow)
+        {
+            return new OtpResponse { Success = false, Message = "Conta temporariamente bloqueada." };
         }
 
         if (otp.IsUsed)
         {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "OTP code has already been used"
-            };
+            return new OtpResponse { Success = false, Message = "O código OTP já foi utilizado." };
         }
 
         if (DateTime.UtcNow > otp.ExpiresAt)
         {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "OTP code has expired"
-            };
+            return new OtpResponse { Success = false, Message = "O código OTP expirou." };
         }
 
-        // Mark OTP as used
+        var expectedCode = Encoding.UTF8.GetBytes(otp.Code);
+        var suppliedCode = Encoding.UTF8.GetBytes(code);
+        if (expectedCode.Length != suppliedCode.Length ||
+            !CryptographicOperations.FixedTimeEquals(expectedCode, suppliedCode))
+        {
+            otp.FailedAttempts++;
+            if (otp.FailedAttempts >= MaxFailedAttempts)
+            {
+                otp.BlockedUntil = DateTime.UtcNow.AddMinutes(BlockDurationMinutes);
+            }
+
+            await _otpRepository.UpdateAsync(otp, cancellationToken);
+            return InvalidOtpResponse();
+        }
+
         otp.IsUsed = true;
         otp.UsedAt = DateTime.UtcNow;
         await _otpRepository.UpdateAsync(otp, cancellationToken);
 
-        // Generate JWT token
-        var token = _tokenService.GenerateToken(email);
-
+        var permissions = await _userRepository.GetPermissionsAsync(user.Id, cancellationToken);
         return new OtpResponse
         {
             Success = true,
-            Message = "OTP validated successfully",
-            Token = token
+            Message = "Autenticação concluída com sucesso.",
+            Token = _tokenService.GenerateToken(user, permissions)
         };
     }
 
-    private static string GenerateOtpCode()
+    private static string GenerateOtpCode() =>
+        RandomNumberGenerator.GetInt32(0, 1_000_000).ToString($"D{OtpLength}");
+
+    private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static OtpResponse InvalidOtpResponse() => new()
     {
-        var random = new Random();
-        var code = random.Next(0, 999999).ToString("D6");
-        return code;
-    }
+        Success = false,
+        Message = "Email ou código OTP inválido."
+    };
 }

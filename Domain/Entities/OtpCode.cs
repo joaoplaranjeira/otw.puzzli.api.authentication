@@ -11,4 +11,6 @@ public class OtpCode
     public DateTime? UsedAt { get; set; }
     public string? IpAddress { get; set; }
     public string? UserAgent { get; set; }
+    public int FailedAttempts { get; set; }
+    public DateTime? BlockedUntil { get; set; }
 }

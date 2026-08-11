@@ -1,6 +1,8 @@
+using Domain.Entities;
+
 namespace Application.Services;
 
 public interface ITokenService
 {
-    string GenerateToken(string email);
+    string GenerateToken(User user, IEnumerable<string> permissions);
 }

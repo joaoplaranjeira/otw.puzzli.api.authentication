@@ -1,9 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using Application.Services;
+using Domain.Entities;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Infrastructure.Services;
 
@@ -16,7 +16,7 @@ public class TokenService : ITokenService
         _configuration = configuration;
     }
 
-    public string GenerateToken(string email)
+    public string GenerateToken(User user, IEnumerable<string> permissions)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
         var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
@@ -26,22 +26,24 @@ public class TokenService : ITokenService
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, email),
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Name ?? string.Empty),
+            new(ClaimTypes.Role, user.Role ?? string.Empty),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
+        claims.AddRange(permissions.Select(permission => new Claim("permissions", permission)));
 
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
-            signingCredentials: credentials
-        );
+            signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

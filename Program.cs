@@ -54,10 +54,13 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
 });
+builder.Services.AddAuthorization();
 
 // Register Services
 builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient<IEmailService, LoopsEmailService>();
 

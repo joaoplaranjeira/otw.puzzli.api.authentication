@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using Domain.Entities;
 using Domain.Repositories;
 using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
@@ -21,21 +21,20 @@ public class OtpRepository : IOtpRepository
         return otpCode;
     }
 
-    public async Task<OtpCode?> GetByEmailAndCodeAsync(string email, string code, CancellationToken cancellationToken = default)
-    {
-        return await _context.OtpCodes
-            .Where(o => o.Email == email && o.Code == code)
-            .OrderByDescending(o => o.CreatedAt)
+    public Task<OtpCode?> GetLatestByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        _context.OtpCodes
+            .Where(otp => otp.Email == email)
+            .OrderByDescending(otp => otp.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
-    }
 
-    public async Task<OtpCode?> GetLatestByEmailAsync(string email, CancellationToken cancellationToken = default)
-    {
-        return await _context.OtpCodes
-            .Where(o => o.Email == email)
-            .OrderByDescending(o => o.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
+    public async Task<IReadOnlyList<OtpCode>> GetRecentByEmailAsync(
+        string email,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default) =>
+        await _context.OtpCodes
+            .AsNoTracking()
+            .Where(otp => otp.Email == email && otp.CreatedAt >= sinceUtc)
+            .ToListAsync(cancellationToken);
 
     public async Task UpdateAsync(OtpCode otpCode, CancellationToken cancellationToken = default)
     {
