@@ -18,10 +18,9 @@ RUN dotnet publish "Otw.Puzzli.Api.Authentication.csproj" -c Release -o /app/pub
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
-# Heroku uses PORT environment variable
-ENV ASPNETCORE_URLS=http://+:${PORT:-8080}
+EXPOSE 8080
 
 COPY --from=publish /app/publish .
 
-# Use CMD instead of ENTRYPOINT for Heroku compatibility
-CMD ASPNETCORE_URLS=http://*:$PORT dotnet Otw.Puzzli.Api.Authentication.dll
+# Uses Heroku's PORT when present and port 8080 in local containers.
+CMD ["sh", "-c", "dotnet Otw.Puzzli.Api.Authentication.dll --urls http://0.0.0.0:${PORT:-8080}"]

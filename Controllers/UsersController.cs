@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Application.DTOs;
+using Application.Security;
 using Application.UseCases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +20,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet]
-    [RequirePermission("users.view")]
+    [RequirePermission(PermissionKeys.UsersView)]
     public async Task<ActionResult<IReadOnlyList<UserResponse>>> GetAll(CancellationToken cancellationToken) =>
         Ok(await _userService.GetAllAsync(cancellationToken));
 
@@ -36,7 +37,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet("{id:long}")]
-    [RequirePermission("users.view")]
+    [RequirePermission(PermissionKeys.UsersView)]
     public async Task<ActionResult<UserResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         var user = await _userService.GetByIdAsync(id, cancellationToken);
@@ -44,7 +45,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [RequirePermission("users.create")]
+    [AllowAnonymous]
     public async Task<ActionResult<UserResponse>> Create(
         [FromBody] CreateUserRequest request,
         CancellationToken cancellationToken)
@@ -61,7 +62,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
-    [RequirePermission("users.edit")]
+    [RequirePermission(PermissionKeys.UsersEdit)]
     public async Task<ActionResult<UserResponse>> Update(
         long id,
         [FromBody] UpdateUserRequest request,

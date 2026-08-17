@@ -8,7 +8,12 @@ services:
       - "5010:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
+      - Swagger__Enabled=true
+      - Database__MigrateOnStartup=true
+      - BootstrapAdmin__Enabled=${BOOTSTRAP_ADMIN_ENABLED:-false}
+      - BootstrapAdmin__Email=${BOOTSTRAP_ADMIN_EMAIL:-}
+      - BootstrapAdmin__Name=${BOOTSTRAP_ADMIN_NAME:-Administrador}
+      - BootstrapAdmin__Username=${BOOTSTRAP_ADMIN_USERNAME:-admin}
     networks:
       - puzzli-network
 
