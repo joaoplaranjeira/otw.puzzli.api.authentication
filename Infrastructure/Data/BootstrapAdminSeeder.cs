@@ -56,6 +56,7 @@ public sealed class BootstrapAdminSeeder
             var now = DateTime.UtcNow;
             user = new User
             {
+                CompanyId = _options.CompanyId,
                 Name = _options.Name.Trim(),
                 Username = username,
                 Email = email,

@@ -40,6 +40,7 @@ public sealed class UserService : IUserService
         var now = DateTime.UtcNow;
         var user = new User
         {
+            CompanyId = request.CompanyId,
             Name = request.Name.Trim(),
             Username = request.Username.Trim(),
             Email = NormalizeEmail(request.Email),
@@ -70,6 +71,7 @@ public sealed class UserService : IUserService
         }
 
         await EnsureIdentityIsAvailableAsync(request.Email, request.Username, id, cancellationToken);
+        user.CompanyId = request.CompanyId;
         user.Name = request.Name.Trim();
         user.Username = request.Username.Trim();
         user.Email = NormalizeEmail(request.Email);
@@ -121,6 +123,7 @@ public sealed class UserService : IUserService
     private async Task<UserResponse> MapAsync(User user, CancellationToken cancellationToken) => new()
     {
         Id = user.Id,
+        CompanyId = user.CompanyId,
         Name = user.Name,
         Username = user.Username,
         Email = user.Email,

@@ -14,6 +14,7 @@ services:
       - BootstrapAdmin__Email=${BOOTSTRAP_ADMIN_EMAIL:-}
       - BootstrapAdmin__Name=${BOOTSTRAP_ADMIN_NAME:-Administrador}
       - BootstrapAdmin__Username=${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      - BootstrapAdmin__CompanyId=${BOOTSTRAP_ADMIN_COMPANY_ID:-c12dd532-481b-4ff2-a4f1-a1b2ee417f75}
     networks:
       - puzzli-network
 

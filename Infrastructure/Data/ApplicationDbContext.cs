@@ -38,6 +38,8 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("Users");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.HasIndex(e => e.CompanyId);
             entity.Property(e => e.Name).HasMaxLength(200);
             entity.Property(e => e.Username).HasMaxLength(200);
             entity.Property(e => e.Email).HasMaxLength(255);

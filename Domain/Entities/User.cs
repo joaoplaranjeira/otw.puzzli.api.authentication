@@ -3,6 +3,7 @@ namespace Domain.Entities;
 public class User
 {
     public long Id { get; set; }
+    public Guid CompanyId { get; set; }
     public string? Name { get; set; }
     public string? Username { get; set; }
     public string? Email { get; set; }

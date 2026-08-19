@@ -4,6 +4,9 @@ namespace Application.DTOs;
 
 public sealed class CreateUserRequest
 {
+    [Required]
+    public Guid CompanyId { get; set; }
+
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
@@ -27,6 +30,9 @@ public sealed class CreateUserRequest
 
 public sealed class UpdateUserRequest
 {
+    [Required]
+    public Guid CompanyId { get; set; }
+
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
@@ -56,6 +62,7 @@ public sealed class ReplacePermissionsRequest
 public sealed class UserResponse
 {
     public long Id { get; set; }
+    public Guid CompanyId { get; set; }
     public string? Name { get; set; }
     public string? Username { get; set; }
     public string? Email { get; set; }
