@@ -35,7 +35,8 @@ public class TokenService : ITokenService
             new(ClaimTypes.Name, user.Name ?? string.Empty),
             new(ClaimTypes.Role, user.Role ?? string.Empty),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new("isGlobalAdministrator", (user.Profile == "Administrador Sistema").ToString().ToLowerInvariant(), ClaimValueTypes.Boolean)
         };
         claims.AddRange(permissions.Select(permission => new Claim("permissions", permission)));
 

@@ -134,6 +134,7 @@ public sealed class UserService : IUserService
         InsertedDate = user.InsertedDate,
         UpdatedDate = user.UpdatedDate,
         IsDefaultPassword = user.IsDefaultPassword,
+        IsGlobalAdministrator = user.Profile == "Administrador Sistema",
         Permissions = await _userRepository.GetPermissionsAsync(user.Id, cancellationToken)
     };
 

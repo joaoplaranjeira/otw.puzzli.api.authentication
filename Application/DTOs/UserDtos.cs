@@ -73,5 +73,6 @@ public sealed class UserResponse
     public DateTime InsertedDate { get; set; }
     public DateTime UpdatedDate { get; set; }
     public bool IsDefaultPassword { get; set; }
+    public bool IsGlobalAdministrator { get; set; }
     public IReadOnlyList<string> Permissions { get; set; } = [];
 }
