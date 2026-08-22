@@ -7,6 +7,8 @@ public static class PermissionKeys
     public const string UsersEdit = "users.edit";
     public const string PermissionsView = "permissions.view";
     public const string PermissionsEdit = "permissions.edit";
+    public const string ManagementReportsManage = "management.reports.manage";
+    public const string ManagementReportsViewDriver = "management.reports.view.driver";
 
     public static IReadOnlyList<string> All { get; } =
     [
@@ -14,6 +16,8 @@ public static class PermissionKeys
         UsersCreate,
         UsersEdit,
         PermissionsView,
-        PermissionsEdit
+        PermissionsEdit,
+        ManagementReportsManage,
+        ManagementReportsViewDriver
     ];
 }
